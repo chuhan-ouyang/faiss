@@ -1,3 +1,8 @@
+# Install BLAS
+# sudo apt-get install libblas-dev liblapack-dev
+# sudo apt-get install swig3.0
+# sudo ln -s /usr/bin/swig3.0 /usr/bin/swig
+# pip install -r requirements.txt 
 
 if [ -z "$1" ]; then
     build_path="build"
