@@ -25,7 +25,7 @@ else
 fi
 
 # More about the flags setting checkout https://github.com/facebookresearch/faiss/blob/main/INSTALL.md 
-cmake_defs="-DCMAKE_BUILD_TYPE=${build_type} -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${install_prefix} -DFAISS_ENABLE_GPU=ON -DFAISS_ENABLE_PYTHON=OFF -DFAISS_ENABLE_RAFT=OFF -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=ON -DFAISS_ENABLE_C_API=ON -DCUDAToolkit_ROOT=${cudatoolkit_dir} -DCMAKE_CUDA_ARCHITECTURES=75;72"
+cmake_defs="-DCMAKE_BUILD_TYPE=${build_type} -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${install_prefix} -DFAISS_ENABLE_GPU=ON -DFAISS_ENABLE_PYTHON=OFF -DFAISS_ENABLE_RAFT=OFF -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=ON -DFAISS_ENABLE_C_API=ON -DCUDAToolkit_ROOT=${cudatoolkit_dir} -DCMAKE_CUDA_ARCHITECTURES=60;75;72"
 
 
 
@@ -34,7 +34,7 @@ rm -rf ${install_prefix}/include/faiss ${install_prefix}/lib/libfaiss* ${install
 rm -rf ${build_path} 2>/dev/null
 mkdir ${build_path}
 cd ${build_path}
-cmake ..
+cmake ${cmake_defs} ..
 NPROC=`nproc`
 if [ $NPROC -lt 2 ]; then
     NPROC=2
