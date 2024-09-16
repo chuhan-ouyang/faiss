@@ -9,6 +9,7 @@
 
 #include <faiss/gpu/utils/DeviceTensor.cuh>
 #include <faiss/gpu/utils/HostTensor.cuh>
+#include <iostream>
 
 namespace faiss {
 namespace gpu {
@@ -26,9 +27,11 @@ DeviceTensor<T, Dim, true> toDeviceTemporary(
     DeviceTensor<T, Dim, true> oldT(src, sizes);
 
     if (dev == dstDevice) {
+        std::cout << "toDeviceTemporary: dev == dstDevice" << std::endl;
         // On device we expect
         return oldT;
     } else {
+        std::cout << "toDeviceTemporary: dev != dstDevice" << std::endl;
         // On different device or on host
         DeviceScope scope(dstDevice);
 

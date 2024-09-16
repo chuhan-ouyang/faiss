@@ -21,6 +21,8 @@
 #include <limits>
 #include <memory>
 
+#include <iostream>
+
 namespace faiss {
 namespace gpu {
 
@@ -218,6 +220,7 @@ void GpuIndex::search(
         float* distances,
         idx_t* labels,
         const SearchParameters* params) const {
+    std::cout << "Entered GpuIndex::search" << std::endl;
     DeviceScope scope(config_.device);
     FAISS_THROW_IF_NOT_MSG(this->is_trained, "Index not trained");
 
@@ -255,8 +258,9 @@ void GpuIndex::search(
         // Currently, we don't handle the case where the output data won't
         // fit on the GPU (e.g., n * k is too large for the GPU memory).
         size_t dataSize = (size_t)n * this->d * sizeof(float);
-
+        std::cout << "Entered if (getDeviceForAddress(x) == -1) " << std::endl;
         if (dataSize >= minPagedSize_) {
+            std::cout << "---Entered if (dataSize >= minPagedSize_) " << std::endl;
             searchFromCpuPaged_(
                     n, x, k, outDistances.data(), outLabels.data(), params);
             usePaged = true;
@@ -264,6 +268,7 @@ void GpuIndex::search(
     }
 
     if (!usePaged) {
+        std::cout << "---Entered if (!usePaged) " << std::endl;
         searchNonPaged_(n, x, k, outDistances.data(), outLabels.data(), params);
     }
 
@@ -291,6 +296,7 @@ void GpuIndex::searchNonPaged_(
         float* outDistancesData,
         idx_t* outIndicesData,
         const SearchParameters* params) const {
+    std::cout << "Entered GpuIndex::searchNonPaged_" << std::endl;
     auto stream = resources_->getDefaultStream(config_.device);
 
     // Make sure arguments are on the device we desire; use temporary
