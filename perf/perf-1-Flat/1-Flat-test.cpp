@@ -21,10 +21,10 @@ using idx_t = faiss::idx_t;
 
 int main() {
     int d = 128;      // dimension
-    int nb = 10000;  // database size
+    int nb = 10000;  //  database size
 
     std::vector<int> nq_values;
-    for (int nq = 1; nq <= 5; nq += (nq == 1 ? 4 : 5)) {
+    for (int nq = 1; nq <= 50; nq += (nq == 1 ? 4 : 5)) {
         nq_values.push_back(nq);
     }
 
@@ -44,7 +44,6 @@ int main() {
     // Initialize the index
     faiss::IndexFlatL2 index(d);  // call constructor
     index.add(nb, xb);            // add vectors to the index
-
 
     int k = 4;  // Top-k results
     int num_searches = 50;  // Number of iterations per nq configuration
@@ -91,7 +90,7 @@ int main() {
         }
     }
 
-    std::ofstream csv_file("1-Flat_warmup_1000_dim_960_batch_10000_k_4_1000_iter_new_latencies.csv");
+    std::ofstream csv_file("1-Flat_dim_128_batch_10000_k_4_latencies.csv");
     if (csv_file.is_open()) {
         for (size_t nq_idx = 0; nq_idx < nq_values.size(); nq_idx++) {
             csv_file << nq_values[nq_idx];  // Write the nq value
