@@ -20,11 +20,11 @@
 using idx_t = faiss::idx_t;
 
 int main() {
-    int d = 960;      // dimension
-    int nb = 100000;  // database size
+    int d = 128;      // dimension
+    int nb = 10000;  // database size
 
     std::vector<int> nq_values;
-    for (int nq = 1; nq <= 100; nq += (nq == 1 ? 4 : 5)) {
+    for (int nq = 1; nq <= 5; nq += (nq == 1 ? 4 : 5)) {
         nq_values.push_back(nq);
     }
 
@@ -45,8 +45,10 @@ int main() {
     faiss::IndexFlatL2 index(d);  // call constructor
     index.add(nb, xb);            // add vectors to the index
 
+
     int k = 4;  // Top-k results
-    int num_searches = 5;  // Number of iterations per nq configuration
+    int num_searches = 50;  // Number of iterations per nq configuration
+    int num_warmups = 50;  // Number of iterations per nq configuration
 
     // Latency storage: 2D array where rows are nq configurations and columns are iterations
     uint32_t latencies[nq_values.size()][num_searches];
@@ -55,18 +57,18 @@ int main() {
     for (size_t nq_idx = 0; nq_idx < nq_values.size(); nq_idx++) {
         int nq = nq_values[nq_idx];  // Get current nq configuration
 
-        // Allocate memory for xq based on current nq
-        float* xq = new float[d * nq];
-
-        // Populate xq
-        for (int i = 0; i < nq; i++) {
-            for (int j = 0; j < d; j++)
-                xq[d * i + j] = distrib(rng);
-            xq[d * i] += i / 1000.;
-        }
-
         // Perform search for each iteration
-        for (int iter = 0; iter < num_searches; iter++) {
+        for (int iter = 0; iter < num_warmups + num_searches; iter++) {
+            // Allocate memory for xq based on current nq
+            float* xq = new float[d * nq];
+
+            // Populate xq
+            for (int i = 0; i < nq; i++) {
+                for (int j = 0; j < d; j++)
+                    xq[d * i + j] = distrib(rng);
+                xq[d * i] += i / 1000.;
+            }
+
             idx_t* I = new idx_t[k * nq];
             float* D = new float[k * nq];
 
@@ -79,18 +81,18 @@ int main() {
             uint32_t duration_us = static_cast<uint32_t>(duration_ns / 1000);  // Convert ns to µs
 
             // Store the duration in the 2D latencies array
-            latencies[nq_idx][iter] = duration_us;
+            if (iter >= num_warmups) {
+                latencies[nq_idx][iter - num_warmups] = duration_us;
+            }
 
             delete[] I;
             delete[] D;
+            delete[] xq;  // Free memory for xq after each nq configuration
         }
-
-        delete[] xq;  // Free memory for xq after each nq configuration
     }
 
-    std::ofstream csv_file("1-Flat_dim_960_batch_100000_k_4_latencies.csv");
+    std::ofstream csv_file("1-Flat_warmup_1000_dim_960_batch_10000_k_4_1000_iter_new_latencies.csv");
     if (csv_file.is_open()) {
-        csv_file << "nq, Run1, Run2, Run3, Run4, Run5, Avg\n";
         for (size_t nq_idx = 0; nq_idx < nq_values.size(); nq_idx++) {
             csv_file << nq_values[nq_idx];  // Write the nq value
             uint32_t sum = 0;
