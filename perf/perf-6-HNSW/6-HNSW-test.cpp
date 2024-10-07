@@ -10,20 +10,23 @@
 #include <cstdlib>
 #include <random>
 #include <chrono>
-#include <iostream>
 #include <cstdint>
 #include <fstream>
+#include <iostream>
 #include <vector>
 
 #include <faiss/IndexHNSW.h>
-#include <cuda_runtime.h>
 
 using idx_t = faiss::idx_t;
 
 int main() {
-    int d = 64;      // dimension
-    int nb = 100000; // database size
-    int nq = 10000;  // nb of queries
+    int d = 128;      // dimension
+    int nb = 10000; // database size
+
+    std::vector<int> nq_values;
+    for (int nq = 1; nq <= 50; nq += (nq == 1 ? 4 : 5)) {
+        nq_values.push_back(nq);
+    }
 
     std::mt19937 rng;
     std::uniform_real_distribution<> distrib;
@@ -35,93 +38,65 @@ int main() {
         xb[d * i] += i / 1000.;
     }
 
-    // Move xb to GPU
-    float *xb_gpu;
-    int xb_gpu_size = nb*d*sizeof(float);
-    cudaError_t err = cudaMalloc((void **)&xb_gpu, (xb_gpu_size));
-    if (err != cudaSuccess) {
-        std::cerr << "Failed to allocate device vector (error code " << cudaGetErrorString(err) << ")!\n";
-        return 1;
-    }
-    err = cudaMemcpy(xb_gpu, xb, xb_gpu_size, cudaMemcpyHostToDevice);
-    if (err != cudaSuccess) {
-        std::cerr << "Failed to copy vector from host to device (error code " << cudaGetErrorString(err) << ")!\n";
-        return 1;
-    }
-
     int k = 4;
+    int num_searches = 50;  // Number of iterations per nq configuration
+    int num_warmups = 50;  // Number of iterations per nq configuration
+    
+    // Latency storage: 2D array where rows are nq configurations and columns are iterations
+    uint32_t latencies[nq_values.size()][num_searches];
 
     faiss::IndexHNSWFlat index(d, 32);
-    // index.add(nb, xb_gpu);
+    index.add(nb, xb);
 
-    // { 
-    //     // Allocate memory for xq based on current nq
-    //     float* xq = new float[d * nq];
-    //     for (int i = 0; i < nq; i++) {
-    //         for (int j = 0; j < d; j++)
-    //             xq[d * i + j] = distrib(rng);
-    //         xq[d * i] += i / 1000.;
-    //     }
+    for (size_t nq_idx = 0; nq_idx < nq_values.size(); nq_idx++) {
+        int nq = nq_values[nq_idx];  // Get current nq configuration
 
-    //     // Move xq to GPU
-    //     float *xq_gpu;
-    //     int xq_gpu_size = nq*d*sizeof(float);
-    //     err = cudaMalloc((void **)&xq_gpu, (xq_gpu_size));
-    //     if (err != cudaSuccess) {
-    //         std::cerr << "Failed to allocate device vector (error code " << cudaGetErrorString(err) << ")!\n";
-    //         return 1;
-    //     }
-    //     err = cudaMemcpy(xq_gpu, xq, xq_gpu_size, cudaMemcpyHostToDevice);
-    //     if (err != cudaSuccess) {
-    //         std::cerr << "Failed to copy vector from host to device (error code " << cudaGetErrorString(err) << ")!\n";
-    //         return 1;
-    //     }
+        for (int iter = 0; iter < num_warmups + num_searches; iter++) {
+            float* xq = new float[d * nq];
+            for (int i = 0; i < nq; i++) {
+                for (int j = 0; j < d; j++)
+                    xq[d * i + j] = distrib(rng);
+                xq[d * i] += i / 1000.;
+            }
+            idx_t* I = new idx_t[k * nq];
+            float* D = new float[k * nq];
 
-    //     // idx_t* I = new idx_t[k * nq];
-    //     // float* D = new float[k * nq];
+            auto start = std::chrono::high_resolution_clock::now();
+            index.search(nq, xq, k, D, I);
+            auto end = std::chrono::high_resolution_clock::now();
+            
+            // Calculate duration in nanoseconds and convert to microseconds
+            auto duration_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+            uint32_t duration_us = static_cast<uint32_t>(duration_ns / 1000);  // Convert ns to µs
+            
+            // Store the duration in the 2D latencies array
+            if (iter >= num_warmups) {
+                latencies[nq_idx][iter - num_warmups] = duration_us;
+            }
 
-    //     // Allocate I and D on GPU
-    //     idx_t* I_gpu;
-    //     int I_gpu_size = k*nq*sizeof(idx_t);
-    //     err = cudaMalloc((void **)&I_gpu, (I_gpu_size));
-    //     if (err != cudaSuccess) {
-    //         std::cerr << "Failed to allocate device vector (error code " << cudaGetErrorString(err) << ")!\n";
-    //         return 1;
-    //     }
+            delete[] I;
+            delete[] D;
+            delete[] xq;  // Free memory for xq after each nq configuration
+        }
+    }
 
-    //     float* D_gpu;
-    //     int D_gpu_size = k*nq*sizeof(float);
-    //     err = cudaMalloc((void **)&D_gpu, (D_gpu_size));
-    //     if (err != cudaSuccess) {
-    //         std::cerr << "Failed to allocate device vector (error code " << cudaGetErrorString(err) << ")!\n";
-    //         return 1;
-    //     }
+    std::ofstream csv_file("6-HNSW_dim_128_batch_10000_k_4_latencies.csv");
+    if (csv_file.is_open()) {
+        for (size_t nq_idx = 0; nq_idx < nq_values.size(); nq_idx++) {
+            csv_file << nq_values[nq_idx];  // Write the nq value
+            uint32_t sum = 0;
+            for (int iter = 0; iter < num_searches; iter++) {
+                csv_file << ", " << latencies[nq_idx][iter];
+                sum += latencies[nq_idx][iter];
+            }
+            double avg_latency = sum / static_cast<double>(num_searches);
+            csv_file << ", " << avg_latency << "\n";
+        }
+        csv_file.close();
+    } else {
+        std::cerr << "Unable to open file for writing\n";
+    }
 
-    //     // search xq
-    //     index.search(nq, xq_gpu, k, D_gpu, I_gpu);
-
-    //     // printf("I=\n");
-    //     // for (int i = nq - 5; i < nq; i++) {
-    //     //     for (int j = 0; j < k; j++)
-    //     //         printf("%5zd ", I_gpu[i * k + j]);
-    //     //     printf("\n");
-    //     // }
-
-    //     // printf("D=\n");
-    //     // for (int i = nq - 5; i < nq; i++) {
-    //     //     for (int j = 0; j < k; j++)
-    //     //         printf("%5f ", D_gpu[i * k + j]);
-    //     //     printf("\n");
-    //     // }
-
-    //     cudaFree(xq_gpu);
-    //     cudaFree(I_gpu);
-    //     cudaFree(D_gpu);
-    //     delete[] xq;
-    // }
-
-    cudaFree(xb_gpu);
     delete[] xb;
-
     return 0;
 }
