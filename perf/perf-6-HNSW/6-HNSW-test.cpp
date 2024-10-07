@@ -24,7 +24,7 @@ int main() {
     int nb = 10000; // database size
 
     std::vector<int> nq_values;
-    for (int nq = 1; nq <= 50; nq += (nq == 1 ? 4 : 5)) {
+    for (int nq = 1; nq <= 200; nq += (nq == 1 ? 4 : 5)) {
         nq_values.push_back(nq);
     }
 
