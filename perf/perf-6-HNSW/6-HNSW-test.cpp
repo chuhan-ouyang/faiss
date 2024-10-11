@@ -13,15 +13,40 @@
 #include <cstdint>
 #include <fstream>
 #include <iostream>
+#include <filesystem>
 #include <vector>
+#include <unistd.h>
 
 #include <faiss/IndexHNSW.h>
+#include <faiss/IndexIVFFlat.h>
+
 
 using idx_t = faiss::idx_t;
 
-int main() {
+int main(int argc, char** argv) {
+    std::string data_path = "";
     int d = 128;      // dimension
     int nb = 10000; // database size
+
+    int opt;
+    while ((opt = getopt(argc, argv, "p:d:n:")) != -1) {
+        switch (opt) {
+            case 'p':
+                data_path = optarg;
+                break;
+            case 'd':
+                d = std::atoi(optarg);
+                break;
+            case 'n':
+                nb = std::atoi(optarg);
+                break;
+            default:
+                break;
+        }
+    }
+    if (data_path.empty()) {
+        std::cerr << "./exec -p <data_path> -d <dimension> -n <nb>" << std::endl;
+    }
 
     std::vector<int> nq_values;
     for (int nq = 1; nq <= 200; nq += (nq == 1 ? 4 : 5)) {
@@ -45,7 +70,9 @@ int main() {
     // Latency storage: 2D array where rows are nq configurations and columns are iterations
     uint32_t latencies[nq_values.size()][num_searches];
 
-    faiss::IndexHNSWFlat index(d, 32);
+    faiss::IndexHNSWFlat quantizer(d, 32);
+    faiss::IndexIVFFlat index(&quantizer, d, 16);
+    index.train(nb, xb);
     index.add(nb, xb);
 
     for (size_t nq_idx = 0; nq_idx < nq_values.size(); nq_idx++) {
@@ -80,7 +107,10 @@ int main() {
         }
     }
 
-    std::ofstream csv_file("6-HNSW_dim_128_batch_10000_k_4_latencies.csv");
+    std::string file_name = "6-HNSW_dim_" + std::to_string(d) + "_nb_" + std::to_string(nb) + "_k_" + std::to_string(k) + "_iter_" + std::to_string(num_searches) + "_latencies.csv";
+    std::filesystem::path csv_file_path = std::filesystem::path(data_path) / file_name;
+    std::cout << "csv_file_path: " << csv_file_path << std::endl;
+    std::ofstream csv_file(csv_file_path);
     if (csv_file.is_open()) {
         for (size_t nq_idx = 0; nq_idx < nq_values.size(); nq_idx++) {
             csv_file << nq_values[nq_idx];  // Write the nq value
