@@ -1,0 +1,1 @@
+./4-GPU-ivf-test -p data -d 128 -n 10000

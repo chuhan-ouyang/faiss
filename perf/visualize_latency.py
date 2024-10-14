@@ -1,49 +1,60 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import re
+import sys
+import os
 
-# CSV file name
-csv_filename = '4-GPU-flat_200_5000_dim_128_batch_10000_k_4_latencies.csv'
+def load_csv(csv_filename):
+    df = pd.read_csv(csv_filename, header=None)
+    return df
 
-# Extract dim and batch from the file name using regex
-match = re.search(r'dim_(\d+)_batch_(\d+)', csv_filename)
-if match:
-    dim = match.group(1)
-    batch = match.group(2)
-else:
-    print("Error: Could not parse 'dim' and 'batch' from the file name.")
-    dim = "unknown"
-    batch = "unknown"
+def plot_df(df, output_filename, dim, nb):
+    df.rename(columns={0: 'nq', df.columns[-1]: 'Avg'}, inplace=True)
 
-# Load the CSV file into a DataFrame without specifying column headers
-df = pd.read_csv(csv_filename, header=None)
+    if 'Avg' not in df.columns:
+        print("Error: 'Avg' column not found in the CSV file.")
+        print("Available columns:", df.columns)
+    else:
+        # Extract nq values and average latencies
+        nq_values = df['nq']
+        avg_latencies = df['Avg']
 
-# Assume the first column is 'nq' and the last column is 'Avg'
-df.rename(columns={0: 'nq', df.columns[-1]: 'Avg'}, inplace=True)
+        plt.figure(figsize=(10, 6))
+        plt.plot(nq_values, avg_latencies, marker='o', linestyle='-', color='b')
 
-# Check if 'Avg' column exists
-if 'Avg' not in df.columns:
-    print("Error: 'Avg' column not found in the CSV file.")
-    print("Available columns:", df.columns)
-else:
-    # Extract nq values and average latencies
-    nq_values = df['nq']
-    avg_latencies = df['Avg']
+        plt.xlabel('Batch Size (nq)')
+        plt.ylabel('Average Latency (µs)')
+        plt.title(f'Average Latency vs. Batch Size with dim={dim}, nb={nb}')
+        plt.grid(True)
+        plt.ylim(bottom=0)
+        # Save the plot to a file, incorporating dim and batch into the file name
+        plt.savefig(output_filename, format='pdf')
+        plt.show()
 
-    # Plot the data using a line chart
-    plt.figure(figsize=(10, 6))
-    plt.plot(nq_values, avg_latencies, marker='o', linestyle='-', color='b')
+if __name__ == "__main__":
+    arguments = sys.argv
+    if len(sys.argv) < 3:
+        print("Usage: python3 visualize_latency.py <csv_filename> <output_dir>")
+        exit()
+    csv_filename = sys.argv[1]
+    output_dir = sys.argv[2]
+    pos = csv_filename.rfind("/")
+    if pos == -1:
+        plot_file_name = csv_filename
+    else:
+        plot_file_name = csv_filename[pos+1:]
+    output_pathcsv = os.path.join(output_dir, plot_file_name)
+    output_pathname = output_pathcsv.replace(".csv", ".pdf")
 
-    # Add labels and title with dim and batch in the title
-    plt.xlabel('Batch Size (nq)')
-    plt.ylabel('Average Latency (µs)')
-    plt.title(f'Average Latency vs. Batch Size with dim={dim}, nb={batch}')
-    plt.grid(True)
+    match = re.search(r'.*dim_(\d+)_nb_(\d+)', csv_filename)
+    if match:
+        dim = match.group(1)
+        nb = match.group(2)
+    else:
+        print("Error: Could not parse 'dim' and 'nb' from the file name.")
+        dim = "unknown"
+        nb = "unknown"
 
-    # Ensure y-axis starts from zero
-    plt.ylim(bottom=0)
-
-    # Save the plot to a file, incorporating dim and batch into the file name
-    output_filename = f'latency_plot_dim_{dim}_batch_{batch}.png'
-    plt.savefig(output_filename, format='png')
-    plt.show()  # Display the plot if running interactively
+    df = load_csv(csv_filename)
+    print(output_pathname)
+    plot_df(df, output_pathname, dim, nb)
