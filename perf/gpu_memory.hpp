@@ -1,9 +1,9 @@
 // gpu_memory.cpp
 #pragma once
 #include <iostream>
-#include <nvml.h>  
+#include <nvml.h>
 
-void printGPUMemoryUsage() {
+void printGPUMemoryUsage(int& total_memory, int& used_memory, int& free_memory) {
     // Initialize NVML
     nvmlReturn_t result = nvmlInit();
     if (result != NVML_SUCCESS) {
@@ -30,9 +30,13 @@ void printGPUMemoryUsage() {
     }
 
     // Print memory usage
-    std::cout << "Total memory: " << memory.total / (1024 * 1024) << " MB" << std::endl;
-    std::cout << "Used memory: " << memory.used / (1024 * 1024) << " MB" << std::endl;
-    std::cout << "Free memory: " << memory.free / (1024 * 1024) << " MB" << std::endl;
+    // std::cout << "Total memory: " << memory.total / (1024 * 1024) << " MB" << std::endl;
+    // std::cout << "Used memory: " << memory.used / (1024 * 1024) << " MB" << std::endl;
+    // std::cout << "Free memory: " << memory.free / (1024 * 1024) << " MB" << std::endl;
+
+    total_memory = memory.total / (1024 * 1024);
+    used_memory = memory.used / (1024 * 1024);
+    free_memory = memory.free / (1024 * 1024);
 
     // Shutdown NVML
     nvmlShutdown();

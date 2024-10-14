@@ -73,9 +73,8 @@ int main(int argc, char* argv[]) {
     }
 
     std::vector<int> nq_values;
-    for (int nq = 200; nq <= 2000; nq += 500) {
-        nq_values.push_back(nq);
-    }
+    int nq = 3500;
+    nq_values.push_back(nq);
     int k = 4;
 
     std::mt19937 rng;
@@ -190,14 +189,14 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    std::string file_name = "4-GPU_ivf_dim_" + std::to_string(d) + "_nb_" + std::to_string(nb) + "_k_" + std::to_string(k) + "_iter_" + std::to_string(num_searches) + "_latencies.csv";
+    std::string file_name = "4-GPU_ivf_repeated_dim_" + std::to_string(d) + "_nb_" + std::to_string(nb) + "_k_" + std::to_string(k) + "_iter_" + std::to_string(num_searches) + "_nq_" + std::to_string(nq) + "_latencies.csv";
     std::filesystem::path csv_file_path = std::filesystem::path(data_path) / file_name;
     std::cout << "csv_file_path: " << csv_file_path << std::endl;
     std::ofstream csv_file(csv_file_path);
     write_csv(csv_file, nq_values, &latencies[0][0], num_searches, true);
 
     // CSV for tracking GPU memory usage
-    std::string mem_file_name = "mem_4-GPU_ivf_dim_" + std::to_string(d) + "_nb_" + std::to_string(nb) + "_k_" + std::to_string(k) + "_iter_" + std::to_string(num_searches) + "_latencies.csv";
+    std::string mem_file_name = "mem_4-GPU_ivf_repeated_dim_" + std::to_string(d) + "_nb_" + std::to_string(nb) + "_k_" + std::to_string(k) + "_iter_" + std::to_string(num_searches) + "_nq_" + std::to_string(nq) + "_latencies.csv";
     std::filesystem::path mem_csv_file_path = std::filesystem::path(data_path) / mem_file_name;
     std::ofstream mem_csv_file(mem_csv_file_path);
     write_csv(mem_csv_file, nq_values, &memories[0][0], num_searches, false);

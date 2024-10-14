@@ -26,7 +26,7 @@ using idx_t = faiss::idx_t;
 int main(int argc, char** argv) {
     std::string data_path = "";
     int d = 128;      // dimension
-    int nb = 10000; // database size
+    int nb = 100000; // database size
 
     int opt;
     while ((opt = getopt(argc, argv, "p:d:n:")) != -1) {
@@ -66,7 +66,7 @@ int main(int argc, char** argv) {
     int k = 4;
     int num_searches = 50;  // Number of iterations per nq configuration
     int num_warmups = 50;  // Number of iterations per nq configuration
-    
+
     // Latency storage: 2D array where rows are nq configurations and columns are iterations
     uint32_t latencies[nq_values.size()][num_searches];
 
@@ -91,11 +91,11 @@ int main(int argc, char** argv) {
             auto start = std::chrono::high_resolution_clock::now();
             index.search(nq, xq, k, D, I);
             auto end = std::chrono::high_resolution_clock::now();
-            
+
             // Calculate duration in nanoseconds and convert to microseconds
             auto duration_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
             uint32_t duration_us = static_cast<uint32_t>(duration_ns / 1000);  // Convert ns to µs
-            
+
             // Store the duration in the 2D latencies array
             if (iter >= num_warmups) {
                 latencies[nq_idx][iter - num_warmups] = duration_us;
@@ -107,7 +107,7 @@ int main(int argc, char** argv) {
         }
     }
 
-    std::string file_name = "6-HNSW_dim_" + std::to_string(d) + "_nb_" + std::to_string(nb) + "_k_" + std::to_string(k) + "_iter_" + std::to_string(num_searches) + "_latencies.csv";
+    std::string file_name = "6-HNSW_original_dim_" + std::to_string(d) + "_nb_" + std::to_string(nb) + "_k_" + std::to_string(k) + "_iter_" + std::to_string(num_searches) + "_latencies.csv";
     std::filesystem::path csv_file_path = std::filesystem::path(data_path) / file_name;
     std::cout << "csv_file_path: " << csv_file_path << std::endl;
     std::ofstream csv_file(csv_file_path);

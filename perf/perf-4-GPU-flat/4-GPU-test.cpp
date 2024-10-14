@@ -28,7 +28,7 @@ int main(int argc, char* argv[]) {
     int d = 128;      // dimension
     int nb = 10000;  // database size
     std::vector<int> nq_values;
-    for (int nq = 1; nq <= 50; nq += (nq == 1 ? 4 : 5)) {
+    for (int nq = 200; nq <= 5000; nq += 200) {
         nq_values.push_back(nq);
     }
     int k = 4;
@@ -131,7 +131,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    std::ofstream csv_file("4-GPU-flat_dim_128_batch_10000_k_4_latencies.csv");
+    std::ofstream csv_file("4-GPU-flat_200_5000_dim_128_batch_10000_k_4_latencies.csv");
     if (csv_file.is_open()) {
         for (size_t nq_idx = 0; nq_idx < nq_values.size(); nq_idx++) {
             csv_file << nq_values[nq_idx];  // Write the nq value

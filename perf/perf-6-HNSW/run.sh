@@ -1,1 +1,1 @@
-./6-HNSW-test
+./6-HNSW-test -p data -d 128 -n 100000

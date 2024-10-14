@@ -5,6 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include <cassert>
 #include <cstdio>
 #include <cstdlib>
 #include <random>
@@ -12,62 +13,76 @@
 #include <cstdint>
 #include <fstream>
 #include <iostream>
+#include <filesystem>
 #include <vector>
+#include <unistd.h>
 
-#include <faiss/IndexFlat.h>
+#include <faiss/IndexHNSW.h>
+#include <faiss/IndexIVFFlat.h>
 
-// 64-bit int
 using idx_t = faiss::idx_t;
 
-int main() {
-    int d = 128;      // dimension
-    int nb = 10000;  // database size
+int main(int argc, char** argv) {
+    std::string data_path = "";
+    int d = 960;      // dimension
+    int nb = 500000;   // database size
+
+    int opt;
+    while ((opt = getopt(argc, argv, "p:d:n:")) != -1) {
+        switch (opt) {
+            case 'p':
+                data_path = optarg;
+                break;
+            case 'd':
+                d = std::atoi(optarg);
+                break;
+            case 'n':
+                nb = std::atoi(optarg);
+                break;
+            default:
+                break;
+        }
+    }
+    if (data_path.empty()) {
+        std::cerr << "./exec -p <data_path> -d <dimension> -n <nb>" << std::endl;
+    }
 
     std::vector<int> nq_values;
-    for (int nq = 50; nq <= 50; nq += (nq == 1 ? 4 : 5)) {
-        nq_values.push_back(nq);
-    }
+    int nq = 200;
+    nq_values.push_back(nq);
 
     std::mt19937 rng;
     std::uniform_real_distribution<> distrib;
 
-    // Allocate memory for xb
     float* xb = new float[d * nb];
-
-    // Populate xb
     for (int i = 0; i < nb; i++) {
         for (int j = 0; j < d; j++)
             xb[d * i + j] = distrib(rng);
         xb[d * i] += i / 1000.;
     }
 
-    // Initialize the index
-    faiss::IndexFlatL2 index(d);  // call constructor
-    index.add(nb, xb);            // add vectors to the index
-
-    int k = 4;  // Top-k results
-    int num_searches = 100;  // Number of iterations per nq configuration
+    int k = 4;
+    int num_searches = 50;  // Number of iterations per nq configuration
+    int num_warmups = 50;  // Number of iterations per nq configuration
 
     // Latency storage: 2D array where rows are nq configurations and columns are iterations
     uint32_t latencies[nq_values.size()][num_searches];
 
-    // Iterate over different nq configurations
+    faiss::IndexHNSWFlat quantizer(d, 16);
+    faiss::IndexIVFFlat index(&quantizer, d, 16);
+    index.train(nb, xb);
+    index.add(nb, xb);
+
     for (size_t nq_idx = 0; nq_idx < nq_values.size(); nq_idx++) {
         int nq = nq_values[nq_idx];  // Get current nq configuration
 
-        // Allocate memory for xq based on current nq
-        float* xq = new float[d * nq];
-
-        // Populate xq
-        for (int i = 0; i < nq; i++) {
-            for (int j = 0; j < d; j++)
-                xq[d * i + j] = distrib(rng);
-            xq[d * i] += i / 1000.;
-        }
-
-        // Perform search for each iteration
-        for (int iter = 0; iter < num_searches; iter++) {
-            std::cout << "Iteration: " << iter << std::endl;
+        for (int iter = 0; iter < num_warmups + num_searches; iter++) {
+            float* xq = new float[d * nq];
+            for (int i = 0; i < nq; i++) {
+                for (int j = 0; j < d; j++)
+                    xq[d * i + j] = distrib(rng);
+                xq[d * i] += i / 1000.;
+            }
             idx_t* I = new idx_t[k * nq];
             float* D = new float[k * nq];
 
@@ -80,15 +95,20 @@ int main() {
             uint32_t duration_us = static_cast<uint32_t>(duration_ns / 1000);  // Convert ns to µs
 
             // Store the duration in the 2D latencies array
-            latencies[nq_idx][iter] = duration_us;
+            if (iter >= num_warmups) {
+                latencies[nq_idx][iter - num_warmups] = duration_us;
+            }
 
             delete[] I;
             delete[] D;
+            delete[] xq;  // Free memory for xq after each nq configuration
         }
-        delete[] xq;  // Free memory for xq after each nq configuration
     }
 
-    std::ofstream csv_file("1-Flat_warmup_dim_128_batch_10000_k_4_latencies.csv");
+    std::string file_name = "6-HNSW_quantizer_repeated_16_dim_" + std::to_string(d) + "_nb_" + std::to_string(nb) + "_k_" + std::to_string(k) + "_iter_" + std::to_string(num_searches) + "_latencies.csv";
+    std::filesystem::path csv_file_path = std::filesystem::path(data_path) / file_name;
+    std::cout << "csv_file_path: " << csv_file_path << std::endl;
+    std::ofstream csv_file(csv_file_path);
     if (csv_file.is_open()) {
         for (size_t nq_idx = 0; nq_idx < nq_values.size(); nq_idx++) {
             csv_file << nq_values[nq_idx];  // Write the nq value
@@ -106,6 +126,5 @@ int main() {
     }
 
     delete[] xb;
-
     return 0;
 }
