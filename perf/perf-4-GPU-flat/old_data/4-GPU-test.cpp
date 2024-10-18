@@ -15,8 +15,6 @@
 #include <cstdint>
 #include <fstream>
 #include <vector>
-#include <unistd.h>
-#include <filesystem>
 
 #include <faiss/IndexFlat.h>
 #include <faiss/gpu/GpuIndexFlat.h>
@@ -27,34 +25,12 @@
 #include <cuda_runtime.h>
 
 int main(int argc, char* argv[]) {
-    std::string data_path = "";
-    int d = 960;      // dimension
-    int nb = 500000;  // database size
-
-    int opt;
-    while ((opt = getopt(argc, argv, "p:d:n:")) != -1) {
-        switch (opt) {
-            case 'p':
-                data_path = optarg;
-                break;
-            case 'd':
-                d = std::atoi(optarg);
-                break;
-            case 'n':
-                nb = std::atoi(optarg);
-                break;
-            default:
-                break;
-        }
-    }
-    if (data_path.empty()) {
-        std::cerr << "./exec -p <data_path> -d <dimension> -n <nb>" << std::endl;
-    }
-
+    int d = 128;      // dimension
+    int nb = 10000;  // database size
     std::vector<int> nq_values;
-    int nq = 3500;
-    nq_values.push_back(nq);
-
+    for (int nq = 200; nq <= 5000; nq += 200) {
+        nq_values.push_back(nq);
+    }
     int k = 4;
 
     std::mt19937 rng;
@@ -88,14 +64,13 @@ int main(int argc, char* argv[]) {
     index_flat.add(nb, xb_gpu); // add vectors to the index
     std::this_thread::sleep_for(std::chrono::seconds(10));
 
-    int num_searches = 100;  // Number of search iterations per nq configuration
-    int num_warmups = 0;  // Number of warmup iterations per nq configuration
+    int num_searches = 50;  // Number of search iterations per nq configuration
+    int num_warmups = 50;  // Number of warmup iterations per nq configuration
     // Latency storage: 2D array where rows are nq configurations and columns are iterations
     uint32_t latencies[nq_values.size()][num_searches];
 
     for (size_t nq_idx = 0; nq_idx < nq_values.size(); nq_idx++) {
         int nq = nq_values[nq_idx];  // Get current nq configuration
-        std::cout << "nq: " << nq << std::endl;
         for (int iter = 0; iter < num_warmups + num_searches; iter++) {
             // Allocate memory for xq based on current nq
             float* xq = new float[d * nq];
@@ -156,10 +131,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    std::string file_name = "4-GPU-FlatL2-repeated_dim_" + std::to_string(d) + "_nb_" + std::to_string(nb) + "_nq_" + std::to_string(nq) + "_latencies.csv";
-    std::filesystem::path csv_file_path = std::filesystem::path(data_path) / file_name;
-    std::cout << "csv_file_path: " << csv_file_path << std::endl;
-    std::ofstream csv_file(csv_file_path);
+    std::ofstream csv_file("4-GPU-flat_200_5000_dim_128_batch_10000_k_4_latencies.csv");
     if (csv_file.is_open()) {
         for (size_t nq_idx = 0; nq_idx < nq_values.size(); nq_idx++) {
             csv_file << nq_values[nq_idx];  // Write the nq value
@@ -168,6 +140,8 @@ int main(int argc, char* argv[]) {
                 csv_file << ", " << latencies[nq_idx][iter];
                 sum += latencies[nq_idx][iter];
             }
+            double avg_latency = sum / static_cast<double>(num_searches);
+            csv_file << ", " << avg_latency << "\n";
         }
         csv_file.close();
     } else {

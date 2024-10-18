@@ -12,24 +12,45 @@
 #include <thread>
 #include <chrono>
 #include <iostream>
+#include <filesystem>
 #include <cstdint>
 #include <fstream>
 #include <vector>
 #include <unistd.h>
-#include <filesystem>
 
 #include <faiss/IndexFlat.h>
 #include <faiss/gpu/GpuIndexFlat.h>
 #include <faiss/gpu/GpuIndexIVFFlat.h>
 #include <faiss/gpu/StandardGpuResources.h>
-#include "gpu_memory.hpp"
+#include "../gpu_memory.hpp"
 
 #include <cuda_runtime.h>
 
+void write_csv(std::ofstream& csv_file, std::vector<int>& nq_values, uint32_t* latencies, int num_searches, bool write_all) {
+    if (csv_file.is_open()) {
+        for (size_t nq_idx = 0; nq_idx < nq_values.size(); nq_idx++) {
+            csv_file << nq_values[nq_idx];  // Write the nq value
+            uint32_t sum = 0;
+            for (int iter = 0; iter < num_searches; iter++) {
+                uint32_t latency = *(latencies + nq_idx * num_searches + iter);
+                if (write_all) {
+                    csv_file << ", " << latency;
+                }
+                sum += latency;
+            }
+            double avg_latency = sum / static_cast<double>(num_searches);
+            csv_file << ", " << avg_latency << "\n";
+        }
+        csv_file.close();
+    } else {
+        std::cerr << "Unable to open file for writing\n";
+    }
+}
+
 int main(int argc, char* argv[]) {
     std::string data_path = "";
-    int d = 960;      // dimension
-    int nb = 500000;  // database size
+    int d = 128;      // dimension
+    int nb = 0;  // database size
 
     int opt;
     while ((opt = getopt(argc, argv, "p:d:n:")) != -1) {
@@ -52,9 +73,9 @@ int main(int argc, char* argv[]) {
     }
 
     std::vector<int> nq_values;
-    int nq = 3500;
-    nq_values.push_back(nq);
-
+    for (int nq = 200; nq <= 5000; nq += 500) {
+        nq_values.push_back(nq);
+    }
     int k = 4;
 
     std::mt19937 rng;
@@ -88,10 +109,12 @@ int main(int argc, char* argv[]) {
     index_flat.add(nb, xb_gpu); // add vectors to the index
     std::this_thread::sleep_for(std::chrono::seconds(10));
 
-    int num_searches = 100;  // Number of search iterations per nq configuration
-    int num_warmups = 0;  // Number of warmup iterations per nq configuration
+    int num_searches = 50;  // Number of search iterations per nq configuration
+    int num_warmups = 50;  // Number of warmup iterations per nq configuration
+
     // Latency storage: 2D array where rows are nq configurations and columns are iterations
     uint32_t latencies[nq_values.size()][num_searches];
+    uint32_t memories[nq_values.size()][num_searches];
 
     for (size_t nq_idx = 0; nq_idx < nq_values.size(); nq_idx++) {
         int nq = nq_values[nq_idx];  // Get current nq configuration
@@ -149,6 +172,14 @@ int main(int argc, char* argv[]) {
                 latencies[nq_idx][iter - num_warmups] = duration_us;
             }
 
+            if (iter >= num_warmups) {
+                int total_memory = 0;
+                int used_memory = 0;
+                int free_memory = 0;
+                printGPUMemoryUsage(total_memory, used_memory, free_memory);
+                memories[nq_idx][iter - num_warmups] = used_memory;
+            }
+
             cudaFree(xq_gpu);
             cudaFree(I_gpu);
             cudaFree(D_gpu);
@@ -156,23 +187,17 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    std::string file_name = "4-GPU-FlatL2-repeated_dim_" + std::to_string(d) + "_nb_" + std::to_string(nb) + "_nq_" + std::to_string(nq) + "_latencies.csv";
+    std::string file_name = "4-GPU_FlatL2_dim_" + std::to_string(d) + "_nb_" + std::to_string(nb) + "_k_" + std::to_string(k) + "_iter_" + std::to_string(num_searches) + "_latencies.csv";
     std::filesystem::path csv_file_path = std::filesystem::path(data_path) / file_name;
     std::cout << "csv_file_path: " << csv_file_path << std::endl;
     std::ofstream csv_file(csv_file_path);
-    if (csv_file.is_open()) {
-        for (size_t nq_idx = 0; nq_idx < nq_values.size(); nq_idx++) {
-            csv_file << nq_values[nq_idx];  // Write the nq value
-            uint32_t sum = 0;
-            for (int iter = 0; iter < num_searches; iter++) {
-                csv_file << ", " << latencies[nq_idx][iter];
-                sum += latencies[nq_idx][iter];
-            }
-        }
-        csv_file.close();
-    } else {
-        std::cerr << "Unable to open file for writing\n";
-    }
+    write_csv(csv_file, nq_values, &latencies[0][0], num_searches, true);
+
+    // CSV for tracking GPU memory usage
+    std::string mem_file_name = "mem_4-GPU_FlatL2_dim_" + std::to_string(d) + "_nb_" + std::to_string(nb) + "_k_" + std::to_string(k) + "_iter_" + std::to_string(num_searches) + "_latencies.csv";
+    std::filesystem::path mem_csv_file_path = std::filesystem::path(data_path) / mem_file_name;
+    std::ofstream mem_csv_file(mem_csv_file_path);
+    write_csv(mem_csv_file, nq_values, &memories[0][0], num_searches, false);
 
     cudaFree(xb_gpu);
     delete[] xb;
