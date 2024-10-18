@@ -73,7 +73,7 @@ int main(int argc, char* argv[]) {
     }
 
     std::vector<int> nq_values;
-    for (int nq = 200; nq <= 2000; nq += 500) {
+    for (int nq = 200; nq <= 5000; nq += 500) {
         nq_values.push_back(nq);
     }
     int k = 4;
