@@ -1,1 +1,2 @@
-./6-HNSW-test -p data -d 128 -n 100000
+source ../../env.sh
+./6-HNSW-quantizer -p data -d 960 -n 100000

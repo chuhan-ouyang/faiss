@@ -68,7 +68,7 @@ int main(int argc, char** argv) {
     // Latency storage: 2D array where rows are nq configurations and columns are iterations
     uint32_t latencies[nq_values.size()][num_searches];
 
-    faiss::IndexHNSWFlat quantizer(d, 16);
+    faiss::IndexHNSWFlat quantizer(d, 64);
     faiss::IndexIVFFlat index(&quantizer, d, 16);
     index.train(nb, xb);
     index.add(nb, xb);
@@ -105,7 +105,7 @@ int main(int argc, char** argv) {
         }
     }
 
-    std::string file_name = "6-HNSW_quantizer_repeated_16_dim_" + std::to_string(d) + "_nb_" + std::to_string(nb) + "_k_" + std::to_string(k) + "_iter_" + std::to_string(num_searches) + "_latencies.csv";
+    std::string file_name = "6-HNSW_CPU_quantizer_repeated_dim_" + std::to_string(d) + "_nb_" + std::to_string(nb) + "_k_" + std::to_string(k) + "_iter_" + std::to_string(num_searches) + "_latencies.csv";
     std::filesystem::path csv_file_path = std::filesystem::path(data_path) / file_name;
     std::cout << "csv_file_path: " << csv_file_path << std::endl;
     std::ofstream csv_file(csv_file_path);

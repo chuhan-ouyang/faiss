@@ -48,7 +48,7 @@ int main(int argc, char** argv) {
     }
 
     std::vector<int> nq_values;
-    for (int nq = 1; nq <= 200; nq += (nq == 1 ? 4 : 5)) {
+    for (int nq = 1; nq <= 50; nq += (nq == 1 ? 4 : 5)) {
         nq_values.push_back(nq);
     }
 
@@ -76,6 +76,7 @@ int main(int argc, char** argv) {
 
     for (size_t nq_idx = 0; nq_idx < nq_values.size(); nq_idx++) {
         int nq = nq_values[nq_idx];  // Get current nq configuration
+        std::cout << "nq: " << nq << std::endl;
 
         for (int iter = 0; iter < num_warmups + num_searches; iter++) {
             float* xq = new float[d * nq];
@@ -106,7 +107,7 @@ int main(int argc, char** argv) {
         }
     }
 
-    std::string file_name = "6-HNSW_quantizer_64_dim_" + std::to_string(d) + "_nb_" + std::to_string(nb) + "_k_" + std::to_string(k) + "_iter_" + std::to_string(num_searches) + "_latencies.csv";
+    std::string file_name = "6-HNSW_CPU_quantizer_dim_" + std::to_string(d) + "_nb_" + std::to_string(nb) + "_k_" + std::to_string(k) + "_iter_" + std::to_string(num_searches) + "_latencies.csv";
     std::filesystem::path csv_file_path = std::filesystem::path(data_path) / file_name;
     std::cout << "csv_file_path: " << csv_file_path << std::endl;
     std::ofstream csv_file(csv_file_path);
