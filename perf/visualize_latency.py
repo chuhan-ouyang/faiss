@@ -8,7 +8,7 @@ def load_csv(csv_filename):
     df = pd.read_csv(csv_filename, header=None)
     return df
 
-def plot_df(df, output_filename, dim, nb):
+def plot_df(df, output_filename, info, dim, nb):
     df.rename(columns={0: 'nq', df.columns[-1]: 'Avg'}, inplace=True)
 
     if 'Avg' not in df.columns:
@@ -24,7 +24,7 @@ def plot_df(df, output_filename, dim, nb):
 
         plt.xlabel('Batch Size (nq)')
         plt.ylabel('Average Latency (µs)')
-        plt.title(f'Average Latency vs. Batch Size with dim={dim}, nb={nb}')
+        plt.title(f'{info} Average Latency vs. Batch Size with dim={dim}, nb={nb}')
         plt.grid(True)
         plt.ylim(bottom=0)
         # Save the plot to a file, incorporating dim and batch into the file name
@@ -46,15 +46,18 @@ if __name__ == "__main__":
     output_pathcsv = os.path.join(output_dir, plot_file_name)
     output_pathname = output_pathcsv.replace(".csv", ".pdf")
 
-    match = re.search(r'.*dim_(\d+)_nb_(\d+)', csv_filename)
-    if match:
-        dim = match.group(1)
-        nb = match.group(2)
+    # Extract information before '_dim'
+    match_info = re.search(r'(.+)_dim_(\d+)_nb_(\d+)', csv_filename)
+    if match_info:
+        info = match_info.group(1)  # Info before '_dim'
+        dim = match_info.group(2)
+        nb = match_info.group(3)
     else:
-        print("Error: Could not parse 'dim' and 'nb' from the file name.")
+        print("Error: Could not parse 'info', 'dim', and 'nb' from the file name.")
+        info = "unknown"
         dim = "unknown"
         nb = "unknown"
 
     df = load_csv(csv_filename)
     print(output_pathname)
-    plot_df(df, output_pathname, dim, nb)
+    plot_df(df, output_pathname, info, dim, nb)
