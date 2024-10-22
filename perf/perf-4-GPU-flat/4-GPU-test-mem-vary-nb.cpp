@@ -78,8 +78,8 @@ int main(int argc, char* argv[]) {
     std::mt19937 rng;
     std::uniform_real_distribution<> distrib;
 
-    int num_searches = 10;  // Number of search iterations per nb configuration
-    int num_warmups = 0;   // Number of warmup iterations per nb configuration
+    int num_searches = 50;  // Number of search iterations per nb configuration
+    int num_warmups = 50;   // Number of warmup iterations per nb configuration
 
     // Latency storage: 2D array where rows are nb configurations and columns are iterations
     uint32_t latencies[nb_values.size()][num_searches];
