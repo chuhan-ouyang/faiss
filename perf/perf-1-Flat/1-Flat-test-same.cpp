@@ -80,20 +80,21 @@ int main(int argc, char** argv) {
         int nq = nq_values[nq_idx];  // Get current nq configuration
         std::cout << "nq: " << nq << std::endl;
 
+        // Allocate memory for xq based on current nq
+        float* xq = new float[d * nq];
+
+        // Populate xq
+        for (int i = 0; i < nq; i++) {
+            for (int j = 0; j < d; j++)
+                xq[d * i + j] = distrib(rng);
+            xq[d * i] += i / 1000.;
+        }
+
+        idx_t* I = new idx_t[k * nq];
+        float* D = new float[k * nq];
+
         // Perform search for each iteration
         for (int iter = 0; iter < num_warmups + num_searches; iter++) {
-            // Allocate memory for xq based on current nq
-            float* xq = new float[d * nq];
-
-            // Populate xq
-            for (int i = 0; i < nq; i++) {
-                for (int j = 0; j < d; j++)
-                    xq[d * i + j] = distrib(rng);
-                xq[d * i] += i / 1000.;
-            }
-
-            idx_t* I = new idx_t[k * nq];
-            float* D = new float[k * nq];
 
             auto start = std::chrono::high_resolution_clock::now();
             index.search(nq, xq, k, D, I);
@@ -107,14 +108,13 @@ int main(int argc, char** argv) {
             if (iter >= num_warmups) {
                 latencies[nq_idx][iter - num_warmups] = duration_us;
             }
-
-            delete[] I;
-            delete[] D;
-            delete[] xq;  // Free memory for xq after each nq configuration
         }
+        delete[] I;
+        delete[] D;
+        delete[] xq;  // Free memory for xq after each nq configuration
     }
 
-    std::string file_name = "1-FlatL2-CPU-diff_dim_" + std::to_string(d) + "_nb_" + std::to_string(nb) + "_k_" + std::to_string(k) + "_iter_" + std::to_string(num_searches) + "_nq_1_100_latencies.csv";
+    std::string file_name = "1-FlatL2-CPU-same_dim_" + std::to_string(d) + "_nb_" + std::to_string(nb) + "_k_" + std::to_string(k) + "_iter_" + std::to_string(num_searches) + "_nq_1_100_latencies.csv";
     std::filesystem::path csv_file_path = std::filesystem::path(data_path) / file_name;
     std::cout << "csv_file_path: " << csv_file_path << std::endl;
     std::ofstream csv_file(csv_file_path);
