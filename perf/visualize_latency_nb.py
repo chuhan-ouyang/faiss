@@ -17,7 +17,9 @@ def plot_df(df, output_filename, info, dim, nq):
     else:
         # Extract nq values and average latencies
         nb_values = df['nb']
+        print(nb_values)
         avg_latencies = df['Avg']
+        print(avg_latencies)
 
         plt.figure(figsize=(10, 6))
         plt.plot(nb_values, avg_latencies, marker='o', linestyle='-', color='b')
@@ -26,7 +28,8 @@ def plot_df(df, output_filename, info, dim, nq):
         plt.ylabel('Average Latency (µs)')
         plt.title(f'{info} Average Latency vs. nb with dim={dim}, nq={nq}')
         plt.grid(True)
-        plt.ylim(bottom=0)
+        max_latency = max(avg_latencies)
+        plt.ylim(0, max_latency + 30)
         # Save the plot to a file, incorporating dim and batch into the file name
         plt.savefig(output_filename, format='pdf')
         plt.show()

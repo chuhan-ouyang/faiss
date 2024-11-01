@@ -46,9 +46,9 @@ int main(int argc, char** argv) {
         std::cerr << "./exec -p <data_path> -d <dimension> -n <nb>" << std::endl;
     }
 
-    int nq = 200;
+    int nq = 1;
     std::vector<int> nq_values;
-    nq_values.push_back(200);
+    nq_values.push_back(1);
 
     std::mt19937 rng;
     std::uniform_real_distribution<> distrib;
@@ -113,7 +113,7 @@ int main(int argc, char** argv) {
         }
     }
 
-    std::string file_name = "1-FlatL2-CPU-repeated_dim_" + std::to_string(d) + "_nb_" + std::to_string(nb) + "_k_" + std::to_string(k) + "_iter_" + std::to_string(num_searches) + "_latencies.csv";
+    std::string file_name = "1-FlatL2-CPU-repeated-diff_dim_" + std::to_string(d) + "_nb_" + std::to_string(nb) + "_k_" + std::to_string(k) + "_iter_" + std::to_string(num_searches) + "_latencies.csv";
     std::filesystem::path csv_file_path = std::filesystem::path(data_path) / file_name;
     std::cout << "csv_file_path: " << csv_file_path << std::endl;
     std::ofstream csv_file(csv_file_path);

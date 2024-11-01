@@ -1,2 +1,2 @@
 source ../../env.sh
-./2-IVFFlat-repeated -p data -d 960 -n 100000
+./build/2-IVFFlat-repeated -p data -d 960 -n 100000

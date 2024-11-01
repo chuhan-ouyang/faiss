@@ -29,7 +29,8 @@ def plot_df(df, output_filename, info, dim, nb):
     plt.grid(True)
 
     # Ensure y-axis starts from zero
-    plt.ylim(bottom=0)
+    max_latency = max(latencies)
+    plt.ylim(0, max_latency + 30)
 
     # Save the plot to a file, incorporating dim and nb into the file name
     plt.savefig(output_filename, format='pdf')
@@ -54,7 +55,7 @@ if __name__ == "__main__":
         info = "unknown"
         dim = "unknown"
         nb = "unknown"
-    
+
     # Build output file path
     pos = csv_filename.rfind("/")
     if pos == -1:
@@ -67,6 +68,6 @@ if __name__ == "__main__":
 
     # Load CSV data
     df = load_csv(csv_filename)
-    
+
     # Generate the plot
     plot_df(df, output_pathname, info, dim, nb)

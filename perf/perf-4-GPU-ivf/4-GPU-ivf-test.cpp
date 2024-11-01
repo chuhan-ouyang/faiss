@@ -102,9 +102,18 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    // faiss::gpu::StandardGpuResources res;
+    // int nlist = 100;
+    // faiss::gpu::GpuIndexIVFFlat index_ivf(&res, d, nlist, faiss::METRIC_L2);
+    // assert(!index_ivf.is_trained);
+    // index_ivf.train(nb, xb_gpu);
+    // assert(index_ivf.is_trained);
+    // index_ivf.add(nb, xb_gpu); // add vectors to the index
+
     faiss::gpu::StandardGpuResources res;
-    int nlist = 100;
-    faiss::gpu::GpuIndexIVFFlat index_ivf(&res, d, nlist, faiss::METRIC_L2);
+    int nlist = 10;
+    faiss::IndexFlatL2 quantizer(d); // the other index
+    faiss::gpu::GpuIndexIVFFlat index_ivf(&res, &quantizer, d, nlist, faiss::METRIC_L2);
     assert(!index_ivf.is_trained);
     index_ivf.train(nb, xb_gpu);
     assert(index_ivf.is_trained);
@@ -190,14 +199,14 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    std::string file_name = "4-GPU_ivf_dim_" + std::to_string(d) + "_nb_" + std::to_string(nb) + "_k_" + std::to_string(k) + "_iter_" + std::to_string(num_searches) + "_latencies.csv";
+    std::string file_name = "4-GPU_ivf_quantizer_dim_" + std::to_string(d) + "_nb_" + std::to_string(nb) + "_k_" + std::to_string(k) + "_iter_" + std::to_string(num_searches) + "_latencies.csv";
     std::filesystem::path csv_file_path = std::filesystem::path(data_path) / file_name;
     std::cout << "csv_file_path: " << csv_file_path << std::endl;
     std::ofstream csv_file(csv_file_path);
     write_csv(csv_file, nq_values, &latencies[0][0], num_searches, true);
 
     // CSV for tracking GPU memory usage
-    std::string mem_file_name = "mem_4-GPU_ivf_dim_" + std::to_string(d) + "_nb_" + std::to_string(nb) + "_k_" + std::to_string(k) + "_iter_" + std::to_string(num_searches) + "_latencies.csv";
+    std::string mem_file_name = "mem_4-GPU_ivf_quantizer_dim_" + std::to_string(d) + "_nb_" + std::to_string(nb) + "_k_" + std::to_string(k) + "_iter_" + std::to_string(num_searches) + "_latencies.csv";
     std::filesystem::path mem_csv_file_path = std::filesystem::path(data_path) / mem_file_name;
     std::ofstream mem_csv_file(mem_csv_file_path);
     write_csv(mem_csv_file, nq_values, &memories[0][0], num_searches, false);

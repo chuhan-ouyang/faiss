@@ -20,3 +20,9 @@
 faiss/python/swigfaiss_avx2.swig
 faiss/python/swigfaiss_avx512.swig
 faiss/python/swigfaiss_sve.swig
+perf/*/old_data
+perf/*/build
+perf/old_plots
+.vscode/
+cmake-3.29.8-linux-x86_64.tar.gz
+tutorial/cpp/myCublasApp

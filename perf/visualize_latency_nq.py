@@ -26,7 +26,8 @@ def plot_df(df, output_filename, info, dim, nb):
         plt.ylabel('Average Latency (µs)')
         plt.title(f'{info} Average Latency vs. Batch Size with dim={dim}, nb={nb}')
         plt.grid(True)
-        plt.ylim(bottom=0)
+        max_latency = max(avg_latencies)
+        plt.ylim(0, max_latency + 30)
         # Save the plot to a file, incorporating dim and batch into the file name
         plt.savefig(output_filename, format='pdf')
         plt.show()

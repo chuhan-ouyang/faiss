@@ -52,7 +52,7 @@ int main(int argc, char* argv[]) {
     }
 
     std::vector<int> nq_values;
-    int nq = 3500;
+    int nq = 1;
     nq_values.push_back(nq);
 
     int k = 4;
@@ -156,7 +156,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    std::string file_name = "4-GPU-FlatL2-repeated_dim_" + std::to_string(d) + "_nb_" + std::to_string(nb) + "_nq_" + std::to_string(nq) + "_latencies.csv";
+    std::string file_name = "4-GPU-FlatL2-repeated-diff_dim_" + std::to_string(d) + "_nb_" + std::to_string(nb) + "_nq_" + std::to_string(nq) + "_latencies.csv";
     std::filesystem::path csv_file_path = std::filesystem::path(data_path) / file_name;
     std::cout << "csv_file_path: " << csv_file_path << std::endl;
     std::ofstream csv_file(csv_file_path);
